@@ -4,7 +4,10 @@ import re
 from openai import OpenAI
 from prompt import prompt
 
-buf = bytearray(1024 * 1024)  # Initialize with spaces
+MEM_SIZE = 65536
+
+buf = bytearray(MEM_SIZE)  # Initialize with spaces
+buf[:] = b' ' * MEM_SIZE
 
 def gettag(t, s):
   return re.findall(f'<{t}\\b.*?>.*?</{t}>', s, re.DOTALL)
@@ -30,38 +33,22 @@ def ask(p):
       #model="meta-llama/Meta-Llama-3.1-70B-Instruct",
       #model="meta-llama/Meta-Llama-3.1-8B-Instruct",
       #model="google/gemma-2-2b-it",
-      #model="google/gemma-2-9b-it",
-      model="Qwen/Qwen2.5-Coder-7B-Instruct",
+      model="google/gemma-2-9b-it",
+      #model="Qwen/Qwen2.5-Coder-7B-Instruct",
       #model="Qwen/Qwen2.5-Coder-32B-Instruct",
       messages=[{'role': 'user', 'content': p}],
-      temperature=0.1
+      temperature=0,
+      max_tokens=1000
   )
   return comp_res.choices[0].message.content
 #q = 'No actions were performed'
 
 """
-write(100, "Hello, Marvin!")
 with open("alice.txt", "r") as file:
     alice_content = file.read()
     write(8888, alice_content)
 """
 
-q= """
-<prev>
-  <action write 100>Hello, World!</action>
-  <result>WRITE OK</result>
-</prev>
-  <action read 107 5></action>
-  <result>World</result>
-<prev>
-  <action write 107 7>Marvin!</action>
-  <result>WRITE OK</result>
-</prev>
-<prev>
-  <action read 100 14></action>
-  <result>Hello, Marvin</result>
-</prev>
-"""
 q = """
 <prev>
   <action read 100 100></action>
@@ -83,32 +70,54 @@ def genprev(ac, r):
 </prev>
 """
 
+READ_MAX = 2000
 
 def aa(a):
   res = ''
+  read_tot = 0
   for ac in gettag('action', a):
-    _, com, *args = re.search(r'<([^>]+)>', ac)[1].split()
-    if com == 'read':
-      res += genprev(ac, read(*map(int, args)))
-    elif com == 'write':
-      content = re.search(r'>([^<]+)<', ac)[1]
-      write(int(args[0]), content)
-      res += genprev(ac, 'WRITE OK')
-    else:
-      res += genprev(ac, 'ERROR - WRONG COMMAND')
+    try:
+      _, com, *args = re.search(r'<([^>]+)>', ac)[1].split()
+      args = list(map(int, args))
+      if com == 'read':
+        if  args[0] > MEM_SIZE:
+          res += genprev(ac, 'ERROR: MEMORY ADDRESS OUT OF BOUNDS')
+        elif args[1] + read_tot <= READ_MAX:
+          read_tot += args[1]
+          res += genprev(ac, read(*args))
+        else:
+          res += genprev(ac, 'ERROR: READ_MAX EXCEEDED')
+      elif com == 'write':
+        if args[0] > MEM_SIZE:
+          res += genprev(ac, 'ERROR: MEMORY ADDRESS OUT OF BOUNDS')
+        else:
+          content = re.search(r'>([^<]+)<', ac)[1]
+          write(args[0], content)
+          res += genprev(ac, 'WRITE OK')
+      else:
+        res += genprev(ac, 'ERROR: WRONG COMMAND')
+    except Exception:
+      res += genprev(ac, "ERROR: MALFORMED ACTION")
   return res
+
 
 try:
   while True:
     print(q)
-    a = ask(prompt(q))
+    q = prompt(q)
+    a = ask(q)
     print(a)
+    #write(0, q+a)
     print('='*10)
     q = aa(a)
     #input('Press Enter to continue...')
     print('='*10)
-    time.sleep(1)
+    time.sleep(3)
 except Exception:
+  with open("dump.txt", "wb") as file:
+    file.write(buf)
+  raise
+except KeyboardInterrupt:
   with open("dump.txt", "wb") as file:
     file.write(buf)
   raise
