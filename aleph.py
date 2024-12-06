@@ -31,7 +31,7 @@ def ask(p):
       #model="Qwen/Qwen2.5-Coder-32B-Instruct",
       messages=[{'role': 'user', 'content': p}],
       temperature=0.3,
-      max_tokens=900
+      max_tokens=8000
   )
   return comp_res.choices[0].message.content
 #q = 'No actions were performed'
