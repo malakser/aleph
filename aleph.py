@@ -25,13 +25,12 @@ def ask(p):
       #model="meta-llama/Meta-Llama-3.1-405B-Instruct",
       #model="meta-llama/Meta-Llama-3.1-70B-Instruct",
       #model="meta-llama/Meta-Llama-3.1-8B-Instruct",
-      model="google/gemma-2-2b-it",
+      #model="google/gemma-2-2b-it",
       #model="google/gemma-2-9b-it",
-      #model="Qwen/Qwen2.5-Coder-7B-Instruct",
+      model="Qwen/Qwen2.5-Coder-7B-Instruct",
       #model="Qwen/Qwen2.5-Coder-32B-Instruct",
       messages=[{'role': 'user', 'content': p}],
-      temperature=0.3,
-      max_tokens=8000
+      temperature=0.0001
   )
   return comp_res.choices[0].message.content
 #q = 'No actions were performed'
